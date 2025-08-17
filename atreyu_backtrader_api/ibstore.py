@@ -456,9 +456,76 @@ class IBApi(EWrapper, EClient):
         - by calling reqExecutions()."""
         self.cb.commissionReport(commissionReport)
 
+    # --- Compat error handler for multiple IB API signatures ---
     @logibmsg
-    def error(self, reqId, errorCode, errorString, advancedOrderRejectJson = ""):
-        self.cb.error(ErrorMsg(reqId, errorCode, errorString, advancedOrderRejectJson))
+    def error(self, *args):
+        """Handle IB API error callbacks with varying signatures."""
+        # Supports:
+        # - error(id, code, msg)
+        # - error(id, code, msg, advancedOrderRejectJson)
+        # - error(id, errorTime, code, msg, advancedOrderRejectJson)
+        reqId = None
+        errorTime = None
+        errorCode = None
+        errorMsg = ""
+        advanced = ""
+
+        try:
+            if len(args) == 3:
+                reqId, errorCode, errorMsg = args
+            elif len(args) == 4:
+                reqId, errorCode, errorMsg, advanced = args
+            elif len(args) == 5:
+                reqId, errorTime, errorCode, errorMsg, advanced = args
+            else:
+                try:
+                    logger.warning("Unexpected error() signature: %s", repr(args))
+                except Exception:
+                    pass
+                return
+        except Exception as e:
+            try:
+                logger.exception("Exception unpacking error args: %s", e)
+            finally:
+                return
+
+        # Dispatch normalized error information
+        try:
+            self._on_error_normalized(reqId, errorCode, errorMsg, advanced, errorTime)
+        except AttributeError:
+            # Fallback logging if handler is missing
+            try:
+                et = f" time={errorTime}" if errorTime else ""
+                adv = f" advanced={advanced}" if advanced else ""
+                logger.error(
+                    "IB ERROR id=%s code=%s msg=%s%s%s",
+                    reqId,
+                    errorCode,
+                    errorMsg,
+                    et,
+                    adv,
+                )
+            except Exception:
+                pass
+
+    def _on_error_normalized(self, reqId, errorCode, errorMsg, advanced, errorTime):
+        """Centralized error processing for all IB API versions."""
+        et = f" time={errorTime}" if errorTime else ""
+        adv = f" advanced={advanced}" if advanced else ""
+
+        # Forward to the original callback consumer
+        try:
+            self.cb.error(ErrorMsg(reqId, errorCode, errorMsg, advanced))
+        finally:
+            # Always log the error details
+            logger.error(
+                "IB ERROR id=%s code=%s msg=%s%s%s",
+                reqId,
+                errorCode,
+                errorMsg,
+                et,
+                adv,
+            )
 
     @logibmsg
     def position(self, account, contract, pos, avgCost):
