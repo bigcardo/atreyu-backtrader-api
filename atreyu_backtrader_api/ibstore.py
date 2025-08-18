@@ -215,7 +215,7 @@ class HistBar(object):
         return f'{self.vars}'
 
 class HistTick(object):
-    '''Set historicalTick object: 'MIDPOINT', 'BID_ASK', 'TRADES' 
+    '''Set historicalTick object: 'MIDPOINT', 'BID_ASK', 'AGGTRADES'
     '''
     def __init__(self, tick, dataType):
         self.vars = vars()
@@ -234,7 +234,7 @@ class HistTick(object):
             self.askPrice = tick.priceAsk
             self.bidSize = float(tick.sizeBid)
             self.askSize = float(tick.sizeAsk)
-            
+
         # self.exchange = tick.exchange
         # self.specialconditions = tick.tickAttribLast.specialConditions
 
@@ -242,7 +242,7 @@ class HistTick(object):
         return f'{self.vars}'
 
 class RTTickLast(object):
-    '''Set realtimeTick object: 'TRADES' 
+    '''Set realtimeTick object: 'AGGTRADES'
     '''
     def __init__(self, tickType, time, price, size, tickAtrribLast, exchange, specialConditions):
         self.vars = vars()
@@ -261,7 +261,7 @@ class RTTickLast(object):
         return f'{self.vars}'
 
 class RTTickBidAsk(object):
-    '''Set realtimeTick object: 'MIDPOINT', 'BID_ASK', 'TRADES' 
+    '''Set realtimeTick object: 'MIDPOINT', 'BID_ASK', 'AGGTRADES'
     '''
     def __init__(self, time, bidPrice, askPrice, bidSize, askSize, tickAttribBidAsk):
         self.vars = vars()
@@ -448,7 +448,7 @@ class IBApi(EWrapper, EClient):
                                             remaining, avgFillPrice, permId,
                                             parentId, lastFillPrice, clientId,
                                             whyHeld, mktCapPrice))
-    
+
     @logibmsg
     def commissionReport(self, commissionReport):
         """The commissionReport() callback is triggered as follows:
@@ -720,7 +720,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
     def getbroker(cls, *args, **kwargs):
         '''Returns broker with *args, **kwargs from registered ``BrokerCls``'''
         return cls.BrokerCls(*args, **kwargs)
-    
+
     def __init__(self):
         super(IBStore, self).__init__()
 
@@ -779,7 +779,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
 
         self._debug = self.p._debug
         # ibpy connection object
-        try:           
+        try:
             self.conn = IBApi(self, self._debug)
             self.conn.connect(self.p.host, self.p.port, self.clientId)
             self.apiThread = threading.Thread(target=self.conn.run, daemon=True)
@@ -816,7 +816,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
         for barsize in self.revdur:
             self.revdur[barsize].sort(key=key2fn)
 
-    
+
     def start(self, data=None, broker=None):
         logger.info(f"START data: {data} broker: {broker}")
         self.reconnect(fromstart=True)  # reconnect should be an invariant
@@ -839,7 +839,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
         elif broker is not None:
             self.broker = broker
 
-    
+
     def stop(self):
         try:
             self.conn.disconnect()  # disconnect should be an invariant
@@ -849,7 +849,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
         # Unblock any calls set on these events
         self._event_managed_accounts.set()
         self._event_accdownload.set()
-    
+
     # @logibmsg
     def connected(self):
         # The isConnected method is available through __getattr__ indirections
@@ -922,7 +922,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
         self.dontreconnect = True
         return False  # connection/reconnection failed
 
-    
+
     def startdatas(self):
         # kickstrat datas, not returning until all of them have been done
         ts = list()
@@ -951,7 +951,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
         for q in reversed(qs):  # datamaster the last one to get a None
             q.put(None)
 
-    
+
     def get_notifications(self):
         '''Return the pending "store" notifications'''
         # The background thread could keep on adding notifications. The None
@@ -965,7 +965,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
             notifs.append(notif)
 
         return notifs
-    
+
     def error(self, msg):
         # 100-199 Order/Data/Historical related
         # 200-203 tickerId and Order Related
@@ -1082,20 +1082,20 @@ class IBStore(with_metaclass(MetaSingleton, object)):
                 logger.warn(f"Cancel data queue for {msg.reqId}")
                 self.cancelQueue(q, True)
 
-    
+
     def connectionClosed(self):
         # Sometmes this comes without 1300/502 or any other and will not be
         # seen in error hence the need to manage the situation independently
         if self.connected():
             self.conn.disconnect()
             self.stopdatas()
-    
+
     def updateAccountTime(self, timeStamp):
         logger.debug(f"timeStamp: {timeStamp}")
 
     def connectAck(self):
         logger.debug(f"connectAck")
-    
+
     def managedAccounts(self, accountsList):
         # 1st message in the stream
         self.managed_accounts = accountsList.split(',')
@@ -1107,7 +1107,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
     @logibmsg
     def reqCurrentTime(self):
         self.conn.reqCurrentTime()
-    
+
     def currentTime(self, time):
         if not self.p.timeoffset:  # only if requested ... apply timeoffset
             return
@@ -1116,7 +1116,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
             self.tmoffset = curtime - datetime.now()
 
         threading.Timer(self.p.timerefresh, self.reqCurrentTime).start()
-    
+
     def timeoffset(self):
         with self._lock_tmoffset:
             return self.tmoffset
@@ -1148,7 +1148,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
             self.iscash[tickerId] = iscash
 
         return tickerId, q
-    
+
     def getTickerQueue(self, start=False):
         '''Creates ticker/Queue for data delivery to a data feed'''
         q = queue.Queue()
@@ -1163,7 +1163,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
             self.iscash[tickerId] = False
 
         return tickerId, q
-    
+
     def cancelQueue(self, q, sendnone=False):
         '''Cancels a Queue for data delivery'''
         # pop ts (tickers) and with the result qs (queues)
@@ -1174,11 +1174,11 @@ class IBStore(with_metaclass(MetaSingleton, object)):
 
         if sendnone:
             q.put(None)
-    
+
     def validQueue(self, q):
         '''Returns (bool)  if a queue is still valid'''
         return q in self.ts  # queue -> ticker
-    
+
     def getContractDetails(self, contract, maxcount=None):
         cds = list()
         q = self.reqContractDetails(contract)
@@ -1194,7 +1194,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
             return None
 
         return cds
-    
+
     def reqContractDetails(self, contract):
         # get a ticker/queue for identification/data delivery
         tickerId, q = self.getTickerQueue()
@@ -1205,7 +1205,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
         '''Signal end of contractdetails'''
         logger.debug(f"Cancel data queue tickerId: {reqId} Q: {self.qs[reqId]}")
         self.cancelQueue(self.qs[reqId], True)
-        
+
     def contractDetails(self, reqId, contractDetails):
         '''Receive answer and pass it to the queue'''
         self.qs[reqId].put(contractDetails)
@@ -1296,7 +1296,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
         elif contract.secType in ['IND'] and self.p.indcash:
             self.iscash[tickerId] = 4  # msg.field code
 
-        what = what or 'TRADES'
+        what = what or 'AGGTRADES'
 
         self.conn.reqHistoricalData(
             tickerId,
@@ -1312,7 +1312,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
             [])
 
         return q
-    
+
     def reqHistoricalData(self, contract, enddate, duration, barsize,
                           what=None, useRTH=False, tz='', sessionend=None):
         '''Proxy to reqHistorical Data'''
@@ -1323,11 +1323,11 @@ class IBStore(with_metaclass(MetaSingleton, object)):
         if contract.secType in ['CASH', 'CFD']:
             self.iscash[tickerId] = True
             if not what:
-                what = 'BID'  # TRADES doesn't work
+                what = 'BID'  # AGGTRADES doesn't work
             elif what == 'ASK':
                 self.iscash[tickerId] = 2
         else:
-            what = what or 'TRADES'
+            what = what or 'AGGTRADES'
 
         # split barsize "x time", look in sizes for (tf, comp) get tf
         tframe = self._sizes[barsize.split()[1]][0]
@@ -1392,7 +1392,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
         elif contract.secType in ['IND'] and self.p.indcash:
             self.iscash[tickerId] = 4  # msg.field code
 
-        what = what or 'TRADES'
+        what = what or 'AGGTRADES'
 
         self.conn.reqHistoricalTicks(
             tickerId,
@@ -1419,15 +1419,15 @@ class IBStore(with_metaclass(MetaSingleton, object)):
         if contract.secType in ['CASH', 'CFD']:
             self.iscash[tickerId] = True
             if not what:
-                what = 'BID'  # TRADES doesn't work
+                what = 'BID'  # AGGTRADES doesn't work
             elif what == 'ASK':
                 self.iscash[tickerId] = 2
         else:
-            what = what or 'TRADES'
+            what = what or 'AGGTRADES'
 
         if what == 'TRADES_ALL':
             what = 'LastAll'
-        elif what == 'TRADES':
+        elif what == 'AGGTRADES':
             what = 'Last'
         elif what == 'BID_ASK':
             when = 'BidAsk'
@@ -1450,7 +1450,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
             [])
 
         return q
-    
+
     def cancelHistoricalData(self, q):
         '''Cancels an existing HistoricalData request
 
@@ -1477,14 +1477,14 @@ class IBStore(with_metaclass(MetaSingleton, object)):
         # get a ticker/queue for identification/data delivery
         tickerId, q = self.getTickerQueue()
 
-        what = what or 'TRADES'
+        what = what or 'AGGTRADES'
 
         # 20150929 - Only 5 secs supported for duration
         self.conn.reqRealTimeBars(
             tickerId,
             contract,
             duration,
-            # bytes('TRADES'),
+            # bytes('AGGTRADES'),
             bytes(what),
             useRTH,
             [])
@@ -1531,11 +1531,11 @@ class IBStore(with_metaclass(MetaSingleton, object)):
 
     def reqTickByTickData(self, contract, what=None, ignoreSize=True):
         '''
-        Tick-by-tick data corresponding to the data shown in the 
+        Tick-by-tick data corresponding to the data shown in the
         TWS Time & Sales Window is available starting with TWS v969 and API v973.04.
-        '''    
+        '''
 
-        if what == 'TRADES':
+        if what == 'AGGTRADES':
             what = 'Last'
         elif what == 'TRADES_ALL':
             what = 'AllLast'
@@ -1549,7 +1549,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
         tickerId, q = self.getTickerQueue()
         self.conn.reqTickByTickData(tickerId, contract, what, 0, ignoreSize)
         return q
-    
+
     def cancelMktData(self, q):
         '''Cancels an existing MarketData subscription
 
@@ -1577,7 +1577,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
 
             logger.debug(f"Cancel data queue for {tickerId}")
             self.cancelQueue(q, True)
-    
+
     def tickString(self, reqId, tickType, value):
         # Receive and process a tickString message
         tickerId = reqId
@@ -1694,7 +1694,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
             msg.date = datetime.utcfromtimestamp(long(dtstr))
 
         q.put(msg)
-    
+
     def historicalDataEnd(self, reqId, start, end):
         tickerId = reqId
         self.histfmt.pop(tickerId, None)
@@ -1971,7 +1971,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
         duration, sizes = self._calcdurations(dtbegin, dtend)
         return duration, sizes[0]
 
-    
+
     def histduration(self, dt1, dt2):
         # Given two dates calculates the smallest possible duration according
         # to the table from the Historical Data API limitations provided by IB
@@ -2029,17 +2029,17 @@ class IBStore(with_metaclass(MetaSingleton, object)):
         return '1 Y'  # to keep the table clean
 
     def makecontract(self, symbol, sectype, exch, curr,
-                     expiry='', strike=0.0, right='', mult=1, 
+                     expiry='', strike=0.0, right='', mult=1,
                      primaryExch=None, localSymbol=None):
         '''returns a contract from the parameters without check'''
 
         contract = Contract()
-        
+
         if localSymbol:
             contract.localSymbol = bytes(localSymbol)
         else:
             contract.symbol = bytes(symbol)
-        
+
         contract.secType = bytes(sectype)
         contract.exchange = bytes(exch)
         if primaryExch:
@@ -2058,29 +2058,29 @@ class IBStore(with_metaclass(MetaSingleton, object)):
     def cancelOrder(self, orderid):
         '''Proxy to cancelOrder'''
         self.conn.cancelOrder(orderid)
-    
+
     def placeOrder(self, orderid, contract, order):
         '''Proxy to placeOrder'''
         self.conn.placeOrder(orderid, contract, order)
-    
+
     def openOrder(self, msg):
         '''Receive the event ``openOrder`` events'''
         self.broker.push_orderstate(msg)
-    
+
     def openOrderEnd(self):
-        # TODO: Add event to manage order requests 
+        # TODO: Add event to manage order requests
         logger.debug(f"openOrderEnd")
-    
+
     def execDetails(self, reqId, contract, execution):
         '''Receive execDetails'''
         execution.shares = float(execution.shares)
         execution.cumQty = float(execution.cumQty)
         self.broker.push_execution(execution)
-    
+
     def orderStatus(self, msg):
         '''Receive the event ``orderStatus``'''
         self.broker.push_orderstatus(msg)
-    
+
     def commissionReport(self, commissionReport):
         '''Receive the event commissionReport'''
         self.broker.push_commissionreport(commissionReport)
@@ -2088,7 +2088,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
     def reqPositions(self):
         '''Proxy to reqPositions'''
         self.conn.reqPositions()
-        
+
     def position(self, account, contract, pos, avgCost):
         '''Receive event positions'''
         # Lock access to the position dicts. This is called in sub-thread and
@@ -2197,7 +2197,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
                 self.acc_value[accountName] = value
             elif key == 'CashBalance' and currency == 'BASE':
                 self.acc_cash[accountName] = value
-    
+
     @logibmsg
     def get_acc_values(self, account=None):
         '''Returns all account value infos sent by TWS during regular updates
@@ -2260,7 +2260,7 @@ class IBStore(with_metaclass(MetaSingleton, object)):
 
                 # Only 1 account, fall through to return only 1
                 account = self.managed_accounts[0]
-                
+
             try:
                 return self.acc_value[account]
             except KeyError:
