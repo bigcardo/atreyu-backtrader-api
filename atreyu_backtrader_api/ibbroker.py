@@ -181,7 +181,13 @@ class IBOrder(OrderBase, ibapi.order.Order):
         # orders lacking this value with error 10289 ("You must set Cash
         # Quantity for this order"). Copy the total quantity into ``cashQty``
         # when the contract type is ``CASH`` to satisfy this requirement.
-        if getattr(getattr(self.data, 'tradecontract', None), 'secType', None) == 'CASH':
+        tradecontract = getattr(self.data, 'tradecontract', None)
+        secType = getattr(tradecontract, 'secType', None)
+        if secType is None:
+            contract = getattr(self.data, 'contract', None)
+            secType = getattr(contract, 'secType', None)
+
+        if secType == 'CASH':
             self.cashQty = self.totalQuantity
 
         # self.m_transmit = self.transmit
