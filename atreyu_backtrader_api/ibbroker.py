@@ -195,6 +195,7 @@ class IBOrder(OrderBase, ibapi.order.Order):
             self.m_parentId = self.parent.orderId
 
         # Time In Force: DAY, GTC, IOC, GTD
+        # Default logic
         if self.valid is None:
             tif = 'GTC'  # Good til cancelled
         elif isinstance(self.valid, (datetime, date)):
@@ -207,13 +208,24 @@ class IBOrder(OrderBase, ibapi.order.Order):
                 tif = 'GTD'  # Good til date
                 valid = datetime.now() + self.valid  # .now, using localtime
                 self.goodTillDate = bytes(valid.strftime('%Y%m%d %H:%M:%S'))
-
         elif self.valid == 0:
             tif = 'DAY'
         else:
             tif = 'GTD'  # Good til date
             valid = num2date(self.valid)
             self.goodTillDate = bytes(valid.strftime('%Y%m%d %H:%M:%S'))
+
+        # Override TIF for Market Crypto orders
+        # secType can be on tradecontract or contract
+        secType_crypto = None
+        tradecontract = getattr(self.data, 'tradecontract', None)
+        if tradecontract is not None:
+            secType_crypto = getattr(tradecontract, 'secType', None)
+        if secType_crypto is None:
+            contract = getattr(self.data, 'contract', None)
+            secType_crypto = getattr(contract, 'secType', None)
+        if secType_crypto == 'CRYPTO' and self.exectype == self.Market:
+            tif = 'IOC'
 
         self.tif = bytes(tif)
 
