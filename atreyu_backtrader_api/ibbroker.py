@@ -174,14 +174,13 @@ class IBOrder(OrderBase, ibapi.order.Order):
                 # value expected in % format ... multiply 100.0
                 self.m_trailingPercent = self.trailpercent * 100.0
 
-        self.totalQuantity = abs(self.size)  # ib takes only positives
-
         # Forex, crypto, and other cash products require the cash quantity
         # field to be explicitly set. Interactive Brokers (and compatible APIs)
         # reject orders lacking this value with error 10289 ("You must set Cash
-        # Quantity for this order"). Copy the total quantity into ``cashQty``
-        # when the contract type is ``CASH`` or ``CRYPTO`` to satisfy this
-        # requirement.
+        # Quantity for this order"). They also reject orders that specify both
+        # a regular size and a cash quantity with error 10293
+        # ("Cryptocurrency Cash Quantity order cannot specify size"). Determine
+        # the security type and set the appropriate quantity field.
         tradecontract = getattr(self.data, 'tradecontract', None)
         secType = getattr(tradecontract, 'secType', None)
         if secType is None:
@@ -189,7 +188,12 @@ class IBOrder(OrderBase, ibapi.order.Order):
             secType = getattr(contract, 'secType', None)
 
         if secType in ('CASH', 'CRYPTO'):
-            self.cashQty = self.totalQuantity
+            # Cash-based products use ``cashQty`` and must not specify
+            # ``totalQuantity`` simultaneously.
+            self.cashQty = abs(self.size)
+            self.totalQuantity = 0
+        else:
+            self.totalQuantity = abs(self.size)  # ib takes only positives
 
         # self.m_transmit = self.transmit
         if self.parent is not None:
