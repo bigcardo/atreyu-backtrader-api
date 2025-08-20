@@ -176,18 +176,19 @@ class IBOrder(OrderBase, ibapi.order.Order):
 
         self.totalQuantity = abs(self.size)  # ib takes only positives
 
-        # Forex and other cash products require the cash quantity field to be
-        # explicitly set. Interactive Brokers (and compatible APIs) reject
-        # orders lacking this value with error 10289 ("You must set Cash
+        # Forex, crypto, and other cash products require the cash quantity
+        # field to be explicitly set. Interactive Brokers (and compatible APIs)
+        # reject orders lacking this value with error 10289 ("You must set Cash
         # Quantity for this order"). Copy the total quantity into ``cashQty``
-        # when the contract type is ``CASH`` to satisfy this requirement.
+        # when the contract type is ``CASH`` or ``CRYPTO`` to satisfy this
+        # requirement.
         tradecontract = getattr(self.data, 'tradecontract', None)
         secType = getattr(tradecontract, 'secType', None)
         if secType is None:
             contract = getattr(self.data, 'contract', None)
             secType = getattr(contract, 'secType', None)
 
-        if secType == 'CASH':
+        if secType in ('CASH', 'CRYPTO'):
             self.cashQty = self.totalQuantity
 
         # self.m_transmit = self.transmit
