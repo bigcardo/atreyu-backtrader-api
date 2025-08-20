@@ -348,11 +348,13 @@ class IBBroker(with_metaclass(MetaIBBroker, BrokerBase)):
     def submit(self, order):
         order.submit(self)
 
+        ''' OcaGroup seems to be not supported
         # ocoize if needed
         if order.oco is None:  # Generate a UniqueId
             order.ocaGroup = bytes(uuid.uuid4())
         else:
             order.ocaGroup = self.orderbyid[order.oco.orderId].ocaGroup
+        '''
 
         self.orderbyid[order.orderId] = order
         self.ib.placeOrder(order.orderId, order.data.tradecontract, order)
